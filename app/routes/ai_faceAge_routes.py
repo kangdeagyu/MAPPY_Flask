@@ -13,8 +13,10 @@ def ai_routes(ai_ns):
         @ai_ns.expect(upload_parser)
         # 오류 커맨드
         @ai_ns.doc(responses={
-            400: "Bad request. need 'new_sentence'",
-            500: "Cannot find the AI Model"
+            200: '성공',
+            300: 'Legacy',
+            400: "Bad request. need 'new_sentence'- 잘못된 요청",
+            500: "Cannot find the AI Model- 서버오류"
         })
         def post(self):          
             if 'file' not in request.files:
