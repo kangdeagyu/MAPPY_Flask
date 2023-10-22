@@ -195,6 +195,9 @@ Icon
 # .xml 파일 무시
 *.xml
 
+# .pkl 파일 무시
+*.pkl
+
 # Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
