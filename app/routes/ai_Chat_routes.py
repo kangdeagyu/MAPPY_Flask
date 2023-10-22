@@ -1,6 +1,6 @@
 from flask_restx import Resource, abort
 from flask import jsonify, request
-from ..services.ai_service import AI_Service
+from ..services.ai_face_service import AI_Service
 import warnings
 
 

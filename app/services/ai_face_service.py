@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-class AI_Service:
+class AI_FaceService:
     def __init__(self,
                     model_path='app/static/16-16_16_cnn_model.h5',
                     cascade_path="app/static/haarcascade_frontalface_default.xml",

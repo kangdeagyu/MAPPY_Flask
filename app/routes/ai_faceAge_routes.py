@@ -1,7 +1,7 @@
 from flask_restx import Resource, abort, reqparse
 from flask import jsonify, request
 from werkzeug.datastructures import FileStorage
-from ..services.ai_service import AI_Service
+from ..services.ai_face_service import AI_FaceService
 import warnings
 
 upload_parser = reqparse.RequestParser()
@@ -26,7 +26,7 @@ def aiFace_routes(aiFace_ns):
             
             try:
                 warnings.filterwarnings('ignore')
-                ai_service = AI_Service()
+                ai_service = AI_FaceService()
                 faceAge = ai_service.AI_predict(image_file)   
                 print(faceAge)
             except OSError:
