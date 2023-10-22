@@ -1,4 +1,4 @@
-from flask_restx import Resource, fields, abort, reqparse
+from flask_restx import Resource, abort, reqparse
 from flask import jsonify, request
 from werkzeug.datastructures import FileStorage
 from ..services.ai_service import AI_Service
@@ -7,12 +7,12 @@ import warnings
 upload_parser = reqparse.RequestParser()
 upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
-def ai_routes(ai_ns):
-    @ai_ns.route("/faceAge")
+def aiFace_routes(aiFace_ns):
+    @aiFace_ns.route("/faceAge")
     class AiTest(Resource):
-        @ai_ns.expect(upload_parser)
+        @aiFace_ns.expect(upload_parser)
         # 오류 커맨드
-        @ai_ns.doc(responses={
+        @aiFace_ns.doc(responses={
             200: '성공',
             300: 'Legacy',
             400: "Bad request. need 'new_sentence'- 잘못된 요청",
