@@ -6,41 +6,6 @@ import numpy as np
 import re
 from keras.models import load_model
 
-# class AI_ChatService:
-class AI_ChatService:
-    def __init__(self,
-                    model_path='app/static/best_Chatbot_model.h5',
-                    cascade_path="app/static/tokenizer.pkl"):
-        # Load the tokenizer from the pickle file first.
-        with open(cascade_path, 'rb') as f:
-            self.tokenizer = pickle.load(f)
-
-        # Then assign START_TOKEN, END_TOKEN and VOCAB_SIZE using the loaded tokenizer.
-        self.START_TOKEN, self.END_TOKEN = [self.tokenizer.vocab_size], [self.tokenizer.vocab_size + 1]
-        self.VOCAB_SIZE = self.tokenizer.vocab_size + 2
-
-        # Finally load the model.
-        self.model = load_model(model_path)
-            
-    def evaluate(self, sentence):
-        sentence = preprocess_sentence(sentence)
-
-        sentence = tf.expand_dims(
-            self.START_TOKEN + self.tokenizer.encode(sentence) + self.END_TOKEN, axis=0)
-
-        output = tf.expand_dims(self.START_TOKEN, 0)
-                
-    def predict(self, sentence):
-        prediction = self.evaluate(sentence)
-
-        predicted_sentence = self.tokenizer.decode(
-            [i for i in prediction if i < self.tokenizer.vocab_size])
-
-        print('Input: {}'.format(sentence))
-        print('Output: {}'.format(predicted_sentence))
-
-        return predicted_sentence
-
 class PositionalEncoding(tf.keras.layers.Layer):
     def __init__(self, position, d_model):
         super(PositionalEncoding, self).__init__()
@@ -84,34 +49,6 @@ class PositionalEncoding(tf.keras.layers.Layer):
         # 주의: 입력값의 sequence 길이에 맞게 positional encoding 값을 슬라이싱
         return inputs + self.pos_encoding[:, :tf.shape(inputs)[1], :]
     
-def scaled_dot_product_attention(query, key, value, mask):
-    # query 크기 : (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
-    # key 크기 : (batch_size, num_heads, key의 문장 길이, d_model/num_heads)
-    # value 크기 : (batch_size, num_heads, value의 문장 길이, d_model/num_heads)
-    # padding_mask : (batch_size, 1, 1, key의 문장 길이)
-
-    # Q와 K의 곱. 어텐션 스코어 행렬.
-    matmul_qk = tf.matmul(query, key, transpose_b=True)
-
-    # 스케일링
-    # dk의 루트값으로 나눠준다.
-    depth = tf.cast(tf.shape(key)[-1], tf.float32)
-    logits = matmul_qk / tf.math.sqrt(depth)
-
-    # 마스킹. 어텐션 스코어 행렬의 마스킹 할 위치에 매우 작은 음수값을 넣는다.
-    # 매우 작은 값이므로 소프트맥스 함수를 지나면 행렬의 해당 위치의 값은 0이 된다.
-    if mask is not None:
-        logits += (mask * -1e9)
-
-    # 소프트맥스 함수는 마지막 차원인 key의 문장 길이 방향으로 수행된다.
-    # attention weight : (batch_size, num_heads, query의 문장 길이, key의 문장 길이)
-    attention_weights = tf.nn.softmax(logits, axis=-1)
-
-    # output : (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
-    output = tf.matmul(attention_weights, value)
-
-    return output, attention_weights
-    
 class MultiHeadAttention(tf.keras.layers.Layer):
 
     def __init__(self, d_model, num_heads, name="multi_head_attention"):
@@ -132,6 +69,34 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         # WO에 해당하는 밀집층 정의
         self.dense = tf.keras.layers.Dense(units=d_model)
+
+    def scaled_dot_product_attention(self, query, key, value, mask):
+        # query 크기 : (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
+        # key 크기 : (batch_size, num_heads, key의 문장 길이, d_model/num_heads)
+        # value 크기 : (batch_size, num_heads, value의 문장 길이, d_model/num_heads)
+        # padding_mask : (batch_size, 1, 1, key의 문장 길이)
+
+        # Q와 K의 곱. 어텐션 스코어 행렬.
+        matmul_qk = tf.matmul(query, key, transpose_b=True)
+
+        # 스케일링
+        # dk의 루트값으로 나눠준다.
+        depth = tf.cast(tf.shape(key)[-1], tf.float32)
+        logits = matmul_qk / tf.math.sqrt(depth)
+
+        # 마스킹. 어텐션 스코어 행렬의 마스킹 할 위치에 매우 작은 음수값을 넣는다.
+        # 매우 작은 값이므로 소프트맥스 함수를 지나면 행렬의 해당 위치의 값은 0이 된다.
+        if mask is not None:
+            logits += (mask * -1e9)
+
+        # 소프트맥스 함수는 마지막 차원인 key의 문장 길이 방향으로 수행된다.
+        # attention weight : (batch_size, num_heads, query의 문장 길이, key의 문장 길이)
+        attention_weights = tf.nn.softmax(logits, axis=-1)
+
+        # output : (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
+        output = tf.matmul(attention_weights, value)
+
+        return output, attention_weights
 
     # num_heads 개수만큼 q, k, v를 split하는 함수
     def split_heads(self, inputs, batch_size):
@@ -163,7 +128,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         # 3. 스케일드 닷 프로덕트 어텐션. 앞서 구현한 함수 사용.
         # (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
-        scaled_attention, _ = scaled_dot_product_attention(query, key, value, mask)
+        scaled_attention, _ = self.scaled_dot_product_attention(query, key, value, mask)
         # (batch_size, query의 문장 길이, num_heads, d_model/num_heads)
         scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])
 
@@ -177,11 +142,83 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         outputs = self.dense(concat_attention)
 
         return outputs
+    
+def create_padding_mask(x):
+    mask = tf.cast(tf.math.equal(x, 0), tf.float32)
+    # (batch_size, 1, 1, key의 문장 길이)
+    return mask[:, tf.newaxis, tf.newaxis, :]
 
-def preprocess_sentence(sentence):
-    sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
-    sentence = sentence.strip()
-    return sentence
+# 디코더의 첫번째 서브층(sublayer)에서 미래 토큰을 Mask하는 함수
+def create_look_ahead_mask(x):
+    seq_len = tf.shape(x)[1]
+    look_ahead_mask = 1 - tf.linalg.band_part(tf.ones((seq_len, seq_len)), -1, 0)
+    padding_mask = create_padding_mask(x) # 패딩 마스크도 포함
+    return tf.maximum(look_ahead_mask, padding_mask)  
+
+# class AI_ChatService:
+class AI_ChatService:
+    def __init__(self, model_path='app/static/best_Chatbot_model.h5', cascade_path="app/static/tokenizer.pkl"):
+        # Load the tokenizer from the pickle file first.
+        with open(cascade_path, 'rb') as f:
+            self.tokenizer = pickle.load(f)
+
+        # Then assign START_TOKEN, END_TOKEN and VOCAB_SIZE using the loaded tokenizer.
+        self.START_TOKEN, self.END_TOKEN = [self.tokenizer.vocab_size], [self.tokenizer.vocab_size + 1]
+        self.VOCAB_SIZE = self.tokenizer.vocab_size + 2
+
+        # Finally load the model.
+        self.model = load_model(model_path, custom_objects={
+            "create_look_ahead_mask":create_look_ahead_mask,
+            "create_padding_mask":create_padding_mask,
+            "PositionalEncoding":PositionalEncoding,
+            "MultiHeadAttention":MultiHeadAttention})
+
+    def evaluate(self, sentence):
+        sentence = self.preprocess_sentence(sentence)
+
+        sentence = tf.expand_dims(
+            self.START_TOKEN + self.tokenizer.encode(sentence) + self.END_TOKEN, axis=0)
+
+        output = tf.expand_dims(self.START_TOKEN, 0)
+
+        # 디코더의 예측 시작
+        for i in range(40):
+            predictions = self.model(inputs=[sentence, output], training=False)
+
+            # 현재(마지막) 시점의 예측 단어를 받아온다.
+            predictions = predictions[:, -1:, :]
+            predicted_id = tf.cast(tf.argmax(predictions, axis=-1), tf.int32)
+
+            # 만약 마지막 시점의 예측 단어가 종료 토큰이라면 예측을 중단
+            if tf.equal(predicted_id, self.END_TOKEN[0]):
+                break
+
+            # 마지막 시점의 예측 단어를 출력에 연결한다.
+            # 이는 for문을 통해서 디코더의 입력으로 사용될 예정이다.
+            output = tf.concat([output, predicted_id], axis=-1)
+
+        return tf.squeeze(output, axis=0)
+
+    def preprocess_sentence(self,sentence):
+        sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
+        sentence = sentence.strip()
+        return sentence
+                
+    def predict(self, sentence):
+        prediction = self.evaluate(sentence)
+
+        predicted_sentence = self.tokenizer.decode(
+            [i for i in prediction if i < self.tokenizer.vocab_size])
+
+        print('Input: {}'.format(sentence))
+        print('Output: {}'.format(predicted_sentence))
+
+        return predicted_sentence
+
+
+
+
+
 
 
 

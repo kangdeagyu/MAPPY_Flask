@@ -7,6 +7,7 @@ import warnings
 parser = reqparse.RequestParser()
 parser.add_argument('text', type=str, help='The text to analyze', required=True)
 
+
 def aiChat_routes(aiChat_ns):
     @aiChat_ns.route("/chat")
     class AiTest(Resource):
@@ -24,7 +25,7 @@ def aiChat_routes(aiChat_ns):
             try:
                 warnings.filterwarnings('ignore')
                 ai_service = AI_ChatService()
-                chat = ai_service.evaluate(text)
+                chat = ai_service.predict(text)
             except OSError:
                 abort(500, error="Cannot find the AI Model")
                 
