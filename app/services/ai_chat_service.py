@@ -209,6 +209,9 @@ class AI_ChatService:
 
         predicted_sentence = self.tokenizer.decode(
             [i for i in prediction if i < self.tokenizer.vocab_size])
+        
+        # 구두점 앞의 공백 제거
+        predicted_sentence = re.sub(r'\s+([?.!,¿])', r'\1', predicted_sentence)
 
         print('Input: {}'.format(sentence))
         print('Output: {}'.format(predicted_sentence))
