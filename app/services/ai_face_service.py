@@ -93,4 +93,4 @@ class AI_FaceService:
             
         classes=['10대','20대','30대','40대','50대','60대','70대']
                 
-        return classes[np.argmax(pred)]
+        return (classes[np.argmax(pred)],pred)

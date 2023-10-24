@@ -1,3 +1,4 @@
+import json
 from flask_restx import Resource, abort, reqparse
 from flask import jsonify, request
 from werkzeug.datastructures import FileStorage
@@ -27,9 +28,12 @@ def aiFace_routes(aiFace_ns):
             try:
                 warnings.filterwarnings('ignore')
                 ai_service = AI_FaceService()
-                faceAge = ai_service.AI_predict(image_file)   
-                print(faceAge)
+                faceAge, persent = ai_service.AI_predict(image_file)  
+                flat_data = [item for sublist in persent for item in sublist]
+                
+                print(">>>", faceAge)
+                print(">>>", flat_data[0])
             except OSError:
                 abort(500, error="Cannot find the AI Model")
                 
-            return jsonify({'result': faceAge})
+            return jsonify({'age': faceAge, 'persent' : eval(str(flat_data))})
