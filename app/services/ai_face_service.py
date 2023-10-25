@@ -17,6 +17,9 @@ class AI_FaceService:
         self.target_size = target_size
         self.padding_size = padding_size
         self.brightness_adjustment = brightness_adjustment
+        self.cropped_image = None; # 크롭이미지 전역변수로 선언
+
+    
 
     def AI_predict(self, image_file):
         try:
@@ -33,6 +36,7 @@ class AI_FaceService:
             faces = faces.reshape(-1)
 
             imgCrop = img_bgr[faces[1]:faces[1]+faces[3],faces[0]:faces[0]+faces[2]]
+            self.cropped_image = cv2.cvtColor(imgCrop, cv2.COLOR_BGR2RGB)
 
             # 잘린 이미지 사이즈 조절 (128,128)
             face_resized=cv2.resize(imgCrop,self.target_size)
