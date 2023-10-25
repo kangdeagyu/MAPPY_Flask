@@ -1,4 +1,4 @@
-import json
+import cv2
 from flask_restx import Resource, abort, reqparse
 from io import BytesIO
 from flask import jsonify, request, send_file
@@ -60,12 +60,19 @@ def aiFace_routes(aiFace_ns):
                 ai_service = AI_FaceService()
                 _, _ = ai_service.AI_predict(image_file)  # 얼굴 인식 수행
                 cropped_image = ai_service.cropped_image  # 잘려진 이미지 가져오기
-                cropped_image_pil = Image.fromarray(cropped_image)  # Numpy 배열을 PIL 이미지로 변환
-                cropped_image_bytes = BytesIO()  # 이미지를 바이트 스트림으로 저장하기 위한 BytesIO 객체 생성
-                cropped_image_pil.save(cropped_image_bytes, format='JPEG')  # 이미지를 JPEG 형식으로 저장
-                cropped_image_bytes.seek(0)  # 바이트 스트림의 포인터 위치를 처음으로 이동
 
-                return send_file(cropped_image_bytes, mimetype='image/jpeg')  # 잘려진 이미지 반환
+                # 이미지를 BGR 형식으로 변환
+                cropped_image_bgr = cv2.cvtColor(cropped_image, cv2.COLOR_RGB2BGR)
+
+                # Numpy 배열을 JPEG 형식의 바이트 스트림으로 변환
+                is_success, buffer = cv2.imencode(".jpg", cropped_image_bgr)
+                if not is_success:
+                    abort(500, error="Failed to convert image to byte stream")
+
+                # 바이트 스트림을 BytesIO 객체로 변환
+                cropped_image_bytes = BytesIO(buffer)
+
+                return send_file(cropped_image_bytes, mimetype='image/jpeg');
 
             except OSError:
                 abort(500, error="서버 오류")
