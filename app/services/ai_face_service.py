@@ -1,4 +1,5 @@
 import cv2
+import dlib
 from keras.models import load_model
 import numpy as np
 import pandas as pd
@@ -7,13 +8,13 @@ from PIL import Image
 class AI_FaceService:
     def __init__(self,
                     model_path='app/static/16-16_16_cnn_model.h5',
-                    cascade_path="app/static/haarcascade_frontalface_default.xml",
+                    shape_predictor_path="app/static/shape_predictor_68_face_landmarks.dat",
                     target_size=(128, 128),
                     padding_size=(184, 184),
                     brightness_adjustment=83.15755552578428):
         self.model = load_model(model_path)
-        # openCV xml 불러오기
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
+        # dlib 모델 불러오기
+        self.detector = dlib.get_frontal_face_detector()
         self.target_size = target_size
         self.padding_size = padding_size
         self.brightness_adjustment = brightness_adjustment
@@ -29,23 +30,28 @@ class AI_FaceService:
 
             # BGR GRAY 색상 변환 (PIL은 RGB 순서이므로 RGB->BGR 변환 후 GRAY 색상 변환)
             img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            
+            faces = self.detector(img_bgr, 1)
+            
+            if len(faces) > 0:
+                face = faces[0]
 
-            faces = self.face_cascade.detectMultiScale(img_bgr,scaleFactor=1.1,minNeighbors=5)
+                x = face.left()
+                y = face.top()
+                w = face.right() - x
+                h = face.bottom() - y
 
-            # 차원 정리 -> 1차원
-            faces = faces.reshape(-1)
+                imgCrop = img_bgr[y:y+h, x:x+w]
+                self.cropped_image = cv2.cvtColor(imgCrop, cv2.COLOR_BGR2RGB)
 
-            imgCrop = img_bgr[faces[1]:faces[1]+faces[3],faces[0]:faces[0]+faces[2]]
-            self.cropped_image = cv2.cvtColor(imgCrop, cv2.COLOR_BGR2RGB)
+                # 잘린 이미지 사이즈 조절 (128,128)
+                face_resized=cv2.resize(imgCrop,self.target_size)
 
-            # 잘린 이미지 사이즈 조절 (128,128)
-            face_resized=cv2.resize(imgCrop,self.target_size)
-
-            # 패딩 사이즈 설정
-            padded_face=np.zeros((*self.padding_size,3),dtype=np.uint8)
-                
-            x_offset=(self.padding_size[0]-self.target_size[0])//2
-            y_offset=(self.padding_size[1]-self.target_size[1])//2
+                # 패딩 사이즈 설정
+                padded_face=np.zeros((*self.padding_size,3),dtype=np.uint8)
+                    
+                x_offset=(self.padding_size[0]-self.target_size[0])//2
+                y_offset=(self.padding_size[1]-self.target_size[1])//2
 
         except Exception as e:
             print('error in image processing:',e)
